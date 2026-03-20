@@ -1,4 +1,4 @@
-const CACHE = 'joshs-health-v1';
+const CACHE = 'joshs-health-v2';
 const ASSETS = ['/', '/index.html'];
 
 self.addEventListener('install', e => {
