@@ -13,6 +13,7 @@
   "build": {
     "appId": "com.josh.health",
     "productName": "Josh's Health",
+    "npmRebuild": false,
     "files": [
       "**/*",
       "!node_modules/.cache",
