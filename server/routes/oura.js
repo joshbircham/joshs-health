@@ -89,6 +89,31 @@ router.post('/sync', async (req, res) => {
   }
 });
 
+// POST /api/oura/import — bulk import a single row (for data migration)
+router.post('/import', (req, res) => {
+  const o = req.body;
+  if (!o.date) return res.status(400).json({ error: 'date required' });
+  db.prepare(`
+    INSERT INTO oura_data (date, sleep_score, readiness_score, hrv_average,
+      resting_hr, total_sleep_minutes, deep_sleep_minutes, rem_sleep_minutes, efficiency)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(date) DO UPDATE SET
+      sleep_score      = excluded.sleep_score,
+      readiness_score  = excluded.readiness_score,
+      hrv_average      = excluded.hrv_average,
+      resting_hr       = excluded.resting_hr,
+      total_sleep_minutes = excluded.total_sleep_minutes,
+      deep_sleep_minutes  = excluded.deep_sleep_minutes,
+      rem_sleep_minutes   = excluded.rem_sleep_minutes,
+      efficiency       = excluded.efficiency
+  `).run(
+    o.date, o.sleep_score ?? null, o.readiness_score ?? null, o.hrv_average ?? null,
+    o.resting_hr ?? null, o.total_sleep_minutes ?? null, o.deep_sleep_minutes ?? null,
+    o.rem_sleep_minutes ?? null, o.efficiency ?? null
+  );
+  res.json({ ok: true });
+});
+
 // GET /api/oura/data?start=YYYY-MM-DD&end=YYYY-MM-DD — fetch from local DB
 router.get('/data', (req, res) => {
   const { start, end } = req.query;
