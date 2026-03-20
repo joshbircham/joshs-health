@@ -927,6 +927,7 @@ function navigate(name) {
   if (name === 'medications') loadMedsConfig();
   if (name === 'history') loadHistory(true);
   if (name === 'insights') loadInsights();
+  if (name === 'log') loadMedsConfig();
 }
 
 document.querySelectorAll('.nav-item').forEach(el => {
@@ -1733,15 +1734,43 @@ if (insightsDateLabel) {
 
 // ── Medications config ────────────────────────────────────
 let medsConfig = [];
+let todayMedIds = {}; // key: `${medName.toLowerCase()}_${doseNumber}` → db row id
 
 async function loadMedsConfig() {
   try {
-    const r = await fetch('/api/medications/config');
-    medsConfig = await r.json();
+    const [configRes, todayRes] = await Promise.all([
+      fetch('/api/medications/config'),
+      fetch(`/api/medications?date=${today()}`),
+    ]);
+    medsConfig = await configRes.json();
+    const todayMeds = await todayRes.json();
+    todayMedIds = {};
+    for (const m of (todayMeds || [])) {
+      if (m.taken) todayMedIds[`${m.medication.toLowerCase()}_${m.dose_number}`] = m.id;
+    }
     renderMedGroups();
     renderMedLists();
   } catch (err) {
     console.error('Failed to load meds config:', err);
+  }
+}
+
+async function toggleMedDose(medName, doseNumber, isChecked) {
+  const key = `${medName.toLowerCase()}_${doseNumber}`;
+  if (isChecked) {
+    const res = await fetch('/api/medications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date: today(), medication: medName, dose_number: doseNumber, taken: 1 }),
+    });
+    const data = await res.json();
+    if (data.id) todayMedIds[key] = data.id;
+  } else {
+    const id = todayMedIds[key];
+    if (id) {
+      await fetch(`/api/medications/${id}`, { method: 'DELETE' });
+      delete todayMedIds[key];
+    }
   }
 }
 
@@ -1765,11 +1794,16 @@ function renderMedGroups() {
       return `<div class="med-group">
         <div class="med-name">${med.name} <span class="med-tag">${categoryLabels[cat] || cat}</span></div>
         <div class="checkbox-row">
-          ${labels.map((label, i) => `
+          ${labels.map((label, i) => {
+            const doseNum = i + 1;
+            const key = `${med.name.toLowerCase()}_${doseNum}`;
+            const checked = todayMedIds[key] ? 'checked' : '';
+            return `
             <label class="checkbox-item">
-              <input type="checkbox" name="med_${med.id}" value="${i + 1}">
+              <input type="checkbox" name="med_${med.id}" value="${doseNum}" ${checked} onchange="toggleMedDose('${med.name}', ${doseNum}, this.checked)">
               <span>${label.trim()}</span>
-            </label>`).join('')}
+            </label>`;
+          }).join('')}
         </div>
       </div>`;
     }).join('');
