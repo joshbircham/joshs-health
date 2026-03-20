@@ -1,0 +1,1949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Josh's Health</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="icon" type="image/png" sizes="64x64" href="/icons/favicon-64.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Josh's Health">
+  <meta name="theme-color" content="#085041">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-base:      #f8f7f4;
+      --bg-surface:   #ffffff;
+      --bg-card:      #ffffff;
+      --bg-input:     #f5f4f1;
+      --border:       #e8e4de;
+      --border-light: #ede9e3;
+      --text-primary: #1a1a1a;
+      --text-secondary: #6b6b6b;
+      --text-muted:   #a8a8a8;
+      --teal:         #085041;
+      --teal-dim:     #e6f4f1;
+      --teal-glow:    rgba(13,122,107,.08);
+      --red:          #e05c5c;
+      --amber:        #d4a84b;
+      --green:        #4caf88;
+      --sidebar-w:    210px;
+      --radius:       8px;
+      --font-body:    'Outfit', sans-serif;
+      --font-mono:    'IBM Plex Mono', monospace;
+    }
+
+    html, body { height: 100%; background: var(--bg-base); color: var(--text-primary); font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
+
+    /* ─── Layout ─────────────────────────────────── */
+    .layout { display: flex; height: 100vh; overflow: hidden; }
+
+    /* ─── Sidebar ────────────────────────────────── */
+    .sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      background: #ffffff;
+      border-right: 1px solid #ede9e3;
+      display: flex;
+      flex-direction: column;
+      padding: 0;
+      overflow-y: auto;
+    }
+
+    .sidebar-brand {
+      padding: 28px 24px 24px;
+      border-bottom: 1px solid #ede9e3;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .brand-logo {
+      height: 96px;
+      width: 96px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-bottom: 12px;
+    }
+    .sidebar-brand h1 {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: #085041;
+      margin-bottom: 2px;
+    }
+    .sidebar-brand p {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 4px;
+      font-family: var(--font-mono);
+    }
+
+    .sidebar-nav { padding: 12px 0; flex: 1; }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 24px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      font-size: 14px;
+      font-weight: 400;
+      transition: color .15s, background .15s, padding-left .15s;
+      border-left: 2px solid transparent;
+      user-select: none;
+    }
+    .nav-item:hover { color: var(--text-primary); background: var(--teal-glow); padding-left: 28px; }
+    .nav-item.active {
+      color: var(--teal);
+      border-left-color: var(--teal);
+      background: var(--teal-glow);
+      font-weight: 500;
+      padding-left: 28px;
+    }
+    .nav-icon { width: 16px; height: 16px; opacity: .7; flex-shrink: 0; }
+    .nav-item.active .nav-icon { opacity: 1; }
+
+    .sidebar-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+    }
+    .today-badge {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* ─── Main ───────────────────────────────────── */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 40px 48px;
+      background: var(--bg-base);
+    }
+
+    .panel { display: none; }
+    .panel.active { display: block; animation: panelIn .25s ease both; }
+
+    .page-header { margin-bottom: 32px; }
+    .page-header h2 { font-size: 22px; font-weight: 500; color: var(--text-primary); }
+    .page-header p { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+
+    /* ─── Cards ──────────────────────────────────── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid #ede9e3;
+      border-radius: var(--radius);
+      padding: 28px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.04);
+      animation: fadeUp .35s ease both;
+    }
+    .card:nth-child(1) { animation-delay: .05s; }
+    .card:nth-child(2) { animation-delay: .10s; }
+    .card:nth-child(3) { animation-delay: .15s; }
+    .card:nth-child(4) { animation-delay: .20s; }
+    .card:nth-child(5) { animation-delay: .25s; }
+    .card-title {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+    }
+
+    /* ─── Grid ───────────────────────────────────── */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+
+    /* ─── Form elements ──────────────────────────── */
+    label { display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; }
+
+    input[type="number"], input[type="text"], input[type="date"], select, textarea {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border-light);
+      border-radius: 5px;
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      font-size: 14px;
+      padding: 10px 12px;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: #085041;
+      box-shadow: 0 0 0 3px rgba(13,122,107,.08);
+      outline: none;
+    }
+    select option { background: var(--bg-card); }
+    textarea { resize: vertical; min-height: 72px; }
+
+    /* Sliders */
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .slider-label { width: 100px; font-size: 12px; color: var(--text-secondary); flex-shrink: 0; }
+    .slider-wrap { flex: 1; position: relative; }
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 4px;
+      border-radius: 2px;
+      background: #e8e4de;
+      outline: none;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--teal);
+      cursor: pointer;
+      transition: transform .1s;
+    }
+    input[type="range"]::-webkit-slider-thumb:active {
+      transform: scale(1.3);
+    }
+    .slider-val {
+      width: 28px;
+      text-align: right;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 500;
+      flex-shrink: 0;
+    }
+    .val-low  { color: var(--green); }
+    .val-mid  { color: var(--amber); }
+    .val-high { color: var(--red); }
+
+    /* Checkboxes */
+    .checkbox-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 16px;
+      margin-top: 8px;
+    }
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text-primary);
+    }
+    .checkbox-item input[type="checkbox"] {
+      -webkit-appearance: none;
+      width: 15px;
+      height: 15px;
+      border: 1.5px solid var(--border-light);
+      border-radius: 3px;
+      background: var(--bg-input);
+      cursor: pointer;
+      position: relative;
+      flex-shrink: 0;
+      transition: border-color .1s, background .1s;
+    }
+    .checkbox-item input[type="checkbox"]:checked {
+      background: var(--teal);
+      border-color: var(--teal);
+    }
+    .checkbox-item input[type="checkbox"]:checked::after {
+      content: '';
+      position: absolute;
+      left: 3px; top: 1px;
+      width: 5px; height: 8px;
+      border: 1.5px solid #000;
+      border-left: none;
+      border-top: none;
+      transform: rotate(40deg);
+    }
+
+    /* Med groups */
+    .med-group { margin-bottom: 18px; padding-bottom: 18px; border-bottom: 1px solid var(--border); }
+    .med-group:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .med-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .med-tag {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      padding: 2px 6px;
+      border-radius: 3px;
+      background: var(--border);
+      color: var(--text-muted);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 10px 20px;
+      border-radius: 5px;
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: all .15s ease;
+    }
+    .btn-primary {
+      background: var(--teal);
+      color: #ffffff;
+    }
+    .btn-primary:hover { background: #0a6558; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(13,122,107,.2); }
+    .btn-secondary {
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border-light);
+    }
+    .btn-secondary:hover { color: var(--text-primary); border-color: var(--teal); transform: translateY(-1px); }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+
+    /* Status badge */
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-family: var(--font-mono);
+      padding: 4px 10px;
+      border-radius: 4px;
+    }
+    .status-dot {
+      width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+    }
+    .status-ok   { background: rgba(76,175,136,.15); color: var(--green); }
+    .status-ok .status-dot   { background: var(--green); }
+    .status-err  { background: rgba(224,92,92,.12); color: var(--red); }
+    .status-err .status-dot  { background: var(--red); }
+    .status-idle { background: rgba(107,138,170,.1); color: var(--text-secondary); }
+    .status-idle .status-dot { background: var(--text-muted); }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: 6px;
+      padding: 12px 18px;
+      font-size: 13px;
+      color: var(--text-primary);
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity .25s cubic-bezier(.4,0,.2,1), transform .25s cubic-bezier(.4,0,.2,1);
+      pointer-events: none;
+      z-index: 999;
+      max-width: 320px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.08);
+    }
+    #toast.show { opacity: 1; transform: translateY(0); }
+    #toast.success { border-left: 3px solid var(--teal); }
+    #toast.error   { border-left: 3px solid var(--red); }
+
+    /* Table */
+    .data-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    .data-table th {
+      text-align: left;
+      padding: 8px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+    .data-table td {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+    }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: #f8f7f4; color: var(--text-primary); }
+    .cell-score { font-weight: 500; }
+    .score-good  { color: var(--green)  !important; }
+    .score-mid   { color: var(--amber)  !important; }
+    .score-bad   { color: var(--red)    !important; }
+
+    /* Chart wrapper */
+    .chart-wrap { position: relative; height: 200px; }
+
+    /* Empty state */
+    .empty {
+      text-align: center;
+      padding: 36px 20px;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+    .empty span { display: block; font-size: 28px; margin-bottom: 8px; opacity: .5; }
+
+    /* Stat tiles */
+    .stat-tile {
+      background: #f5f4f1;
+      border: 1px solid #ede9e3;
+      border-radius: var(--radius);
+      padding: 16px;
+      text-align: center;
+      animation: popIn .3s ease both;
+    }
+    .stat-tile:nth-child(1) { animation-delay: .08s; }
+    .stat-tile:nth-child(2) { animation-delay: .14s; }
+    .stat-tile:nth-child(3) { animation-delay: .20s; }
+    .stat-tile .val {
+      font-family: var(--font-mono);
+      font-size: 32px;
+      font-weight: 500;
+      color: #085041;
+      line-height: 1.1;
+    }
+    .stat-tile .lbl {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+    }
+
+    /* Form row */
+    .form-row { margin-bottom: 14px; }
+    .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+
+    /* File drop */
+    .file-drop {
+      border: 2px dashed var(--border-light);
+      border-radius: var(--radius);
+      padding: 32px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .15s;
+    }
+    .file-drop:hover { border-color: var(--teal); }
+    .file-drop p { color: var(--text-secondary); font-size: 13px; }
+    .file-drop input { display: none; }
+
+    /* ─── Animations ─────────────────────────────── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes panelIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(.96); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    /* Responsive */
+    @media (max-width: 700px) {
+      .sidebar { width: 64px; }
+      .sidebar-brand { padding: 16px 10px; align-items: center; }
+      .brand-logo { height: 38px; width: 38px; margin-bottom: 0; }
+      .sidebar-brand h1, .sidebar-brand p, .nav-item span, .sidebar-footer { display: none; }
+      .nav-icon { opacity: .7; }
+      .nav-item.active .nav-icon { opacity: 1; }
+      .main { padding: 16px; }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .form-row-2 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <img src="/images/josh-health-logo.png" alt="Josh's Health" class="brand-logo" onerror="this.style.display='none'">
+      <h1>Josh's Health</h1>
+      <p id="brand-date"></p>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-item active" data-panel="log">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="2" y="2" width="12" height="12" rx="2"/>
+          <line x1="5" y1="8" x2="11" y2="8"/><line x1="8" y1="5" x2="8" y2="11"/>
+        </svg>
+        <span>Log Today</span>
+      </div>
+      <div class="nav-item" data-panel="history">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="8" cy="8" r="6"/>
+          <polyline points="8,5 8,8 10,10"/>
+        </svg>
+        <span>History</span>
+      </div>
+      <div class="nav-item" data-panel="dashboard">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <polyline points="1,12 5,7 8,9 11,4 15,6"/>
+        </svg>
+        <span>Dashboard</span>
+      </div>
+      <div class="nav-item" data-panel="insights">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="8" cy="8" r="6"/>
+          <path d="M8 5v3.5l2 1.5"/>
+        </svg>
+        <span>Insights</span>
+      </div>
+      <div class="nav-item" data-panel="oura">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="2.5"/>
+        </svg>
+        <span>Oura</span>
+      </div>
+      <div class="nav-item" data-panel="import">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M3 12h10M8 2v7m-3-3 3 3 3-3"/>
+        </svg>
+        <span>Import</span>
+      </div>
+      <div class="nav-item" data-panel="medications">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="3" y="1" width="10" height="14" rx="2"/>
+          <line x1="6" y1="5" x2="10" y2="5"/>
+          <line x1="6" y1="8" x2="10" y2="8"/>
+          <line x1="6" y1="11" x2="9" y2="11"/>
+        </svg>
+        <span>Medications</span>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="today-badge" id="sidebar-day"></div>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="main">
+
+    <!-- ── LOG TODAY ─────────────────────────────── -->
+    <div class="panel active" id="panel-log">
+      <div class="page-header">
+        <h2>Log Today</h2>
+        <p id="log-date-label"></p>
+      </div>
+
+      <form id="symptom-form">
+        <!-- Joint pain -->
+        <div class="card">
+          <div class="card-title">Joint Pain &nbsp;<span style="font-family:var(--font-mono);font-weight:400;text-transform:none;letter-spacing:0">0 = none · 10 = severe</span></div>
+          <div id="pain-sliders">
+            <!-- injected by JS -->
+          </div>
+        </div>
+
+        <!-- General -->
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">Morning Stiffness</div>
+            <div class="form-row">
+              <label>Duration (minutes)</label>
+              <input type="number" id="stiffness" min="0" max="480" placeholder="e.g. 45">
+            </div>
+            <div class="form-row">
+              <label>Swelling Level</label>
+              <select id="swelling">
+                <option value="">— select —</option>
+                <option value="0">None</option>
+                <option value="1">Mild</option>
+                <option value="2">Moderate</option>
+                <option value="3">Severe</option>
+              </select>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Grip Strength <span style="font-family:var(--font-mono);font-weight:400;text-transform:none;letter-spacing:0;font-size:10px">(0–10 subjective)</span></div>
+            <div class="form-row-2">
+              <div>
+                <label>Left hand</label>
+                <input type="number" id="grip-left" min="0" max="10" placeholder="0–10">
+              </div>
+              <div>
+                <label>Right hand</label>
+                <input type="number" id="grip-right" min="0" max="10" placeholder="0–10">
+              </div>
+            </div>
+            <div class="card-title" style="margin-top:8px">Fatigue</div>
+            <div class="slider-row">
+              <span class="slider-label" style="width:auto">Level</span>
+              <div class="slider-wrap">
+                <input type="range" id="fatigue" min="0" max="10" value="0" oninput="updateSlider(this)">
+              </div>
+              <span class="slider-val val-low" id="fatigue-val">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Medications (dynamic) -->
+        <div class="card" id="med-card">
+          <div class="card-title">Medications — <span style="font-family:var(--font-mono);font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted)" id="med-date-label"></span></div>
+          <div id="med-groups-dynamic">
+            <div style="font-size:13px;color:var(--text-muted)">Loading medications…</div>
+          </div>
+        </div>
+
+        <!-- Notes -->
+        <div class="card">
+          <div class="card-title">Notes</div>
+          <textarea id="notes" placeholder="Any additional observations, triggers, activity..."></textarea>
+        </div>
+
+        <div class="btn-row">
+          <button type="submit" class="btn btn-primary">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2,7 5.5,11 12,3"/></svg>
+            Save Today's Log
+          </button>
+          <button type="button" class="btn btn-secondary" onclick="saveDraft(); toast('Draft saved')">Save draft</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- ── HISTORY ───────────────────────────────── -->
+    <div class="panel" id="panel-history">
+      <div class="page-header">
+        <h2>History</h2>
+        <p>Browse and review past entries</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Filter</div>
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          <div>
+            <label>From</label>
+            <input type="date" id="history-from" style="width:160px">
+          </div>
+          <div>
+            <label>To</label>
+            <input type="date" id="history-to" style="width:160px">
+          </div>
+          <button class="btn btn-secondary" style="margin-top:18px" onclick="loadHistory()">Filter</button>
+          <button class="btn btn-secondary" style="margin-top:18px" onclick="loadHistory(true)">Last 30 days</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Entries</div>
+        <div id="history-list">
+          <div class="empty"><span>◎</span>Select a date range to view entries</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── DASHBOARD ──────────────────────────────── -->
+    <div class="panel" id="panel-dashboard">
+      <div class="page-header">
+        <h2>Dashboard</h2>
+        <p>Last 30 days overview</p>
+      </div>
+
+      <!-- Stat tiles -->
+      <div class="grid-3" style="margin-bottom:16px">
+        <div class="stat-tile">
+          <div class="val" id="stat-avg-pain">—</div>
+          <div class="lbl">Avg Pain (7d)</div>
+        </div>
+        <div class="stat-tile">
+          <div class="val" id="stat-avg-hrv">—</div>
+          <div class="lbl">Avg HRV (7d)</div>
+        </div>
+        <div class="stat-tile">
+          <div class="val" id="stat-runs">—</div>
+          <div class="lbl">Runs (30d)</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div class="card-title" style="margin:0">Pain Trend — all areas</div>
+          <button class="btn btn-secondary" style="padding:6px 12px;font-size:12px" onclick="syncOura30()">Sync Oura</button>
+        </div>
+        <div class="chart-wrap" id="pain-chart-wrap">
+          <canvas id="chart-pain"></canvas>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Sleep Score — Oura</div>
+          <div class="chart-wrap">
+            <canvas id="chart-sleep"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">HRV vs Avg Pain</div>
+          <div class="chart-wrap">
+            <canvas id="chart-hrv-pain"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="loadDashboard()">Refresh data</button>
+      </div>
+    </div>
+
+    <!-- ── INSIGHTS ──────────────────────────────── -->
+    <div class="panel" id="panel-insights">
+      <div class="page-header">
+        <h2>Insights</h2>
+        <p id="insights-date-label"></p>
+      </div>
+
+      <!-- How you're feeling -->
+      <div class="card" id="feeling-card">
+        <div class="card-title">How you're feeling today</div>
+        <div id="feeling-summary" style="font-size:15px;color:var(--text-secondary);line-height:1.7">
+          Log today's symptoms to generate your summary.
+        </div>
+      </div>
+
+      <!-- AI Analysis -->
+      <div class="card">
+        <div class="card-title">AI Analysis</div>
+        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">
+          Pulls from your recent symptom logs, Oura data, and run history to give you a plain-English summary of patterns and trends.
+        </p>
+        <div class="btn-row" style="margin-top:0;margin-bottom:16px">
+          <button class="btn btn-primary" onclick="runInsights()">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7" cy="7" r="5"/><path d="M7 4v3.5l2 1.5"/></svg>
+            Generate insights
+          </button>
+          <button class="btn btn-secondary" onclick="runInsights('week')">This week</button>
+          <button class="btn btn-secondary" onclick="runInsights('month')">Last 30 days</button>
+        </div>
+        <div id="insights-last-generated" style="display:none;font-size:11px;color:var(--text-muted);font-family:var(--font-mono);margin-bottom:14px"></div>
+        <div id="insights-loading" style="display:none;font-size:13px;color:var(--text-muted);font-family:var(--font-mono)">
+          Analysing your data…
+        </div>
+        <div id="insights-output" style="font-size:14px;color:var(--text-primary);line-height:1.8;white-space:pre-wrap"></div>
+      </div>
+
+      <!-- Medication reminders -->
+      <div class="card">
+        <div class="card-title">Medication reminders</div>
+        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">
+          Set reminder times for your three daily Diclofenac doses.
+        </p>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">
+          <div>
+            <label>Dose 1 — Morning</label>
+            <input type="time" id="reminder-1" value="08:00">
+          </div>
+          <div>
+            <label>Dose 2 — Midday</label>
+            <input type="time" id="reminder-2" value="13:00">
+          </div>
+          <div>
+            <label>Dose 3 — Evening</label>
+            <input type="time" id="reminder-3" value="19:00">
+          </div>
+        </div>
+        <button class="btn btn-secondary" onclick="setupReminders()">Set up reminders</button>
+        <div id="reminder-status" style="margin-top:10px;font-size:12px;color:var(--text-muted);font-family:var(--font-mono)"></div>
+      </div>
+    </div>
+
+    <!-- ── OURA ───────────────────────────────────── -->
+    <div class="panel" id="panel-oura">
+      <div class="page-header">
+        <h2>Oura Ring</h2>
+        <p>Sync sleep, HRV and readiness data</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Connection</div>
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <span id="oura-status" class="status status-idle"><span class="status-dot"></span>Not tested</span>
+          <button class="btn btn-secondary" onclick="testOura()">Test connection</button>
+          <span style="font-size:12px;color:var(--text-muted)">Token set via <code style="background:var(--bg-input);padding:1px 5px;border-radius:3px;font-family:var(--font-mono)">.env</code> file</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Sync data</div>
+        <div class="btn-row" style="margin-top:0">
+          <button class="btn btn-primary" onclick="syncOura(30)">Sync last 30 days</button>
+          <button class="btn btn-secondary" onclick="syncOura(90)">Sync last 90 days</button>
+        </div>
+        <div id="sync-status" style="margin-top:12px;font-size:12px;color:var(--text-muted);font-family:var(--font-mono)"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Recent data</div>
+        <div id="oura-table-wrap">
+          <div class="empty"><span>◎</span>Sync Oura data to see records</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── IMPORT ─────────────────────────────────── -->
+    <div class="panel" id="panel-import">
+      <div class="page-header">
+        <h2>Import &amp; Settings</h2>
+        <p>Import Apple Health data</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Oura Token Status</div>
+        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">
+          Create a Personal Access Token at <strong style="color:var(--text-primary)">cloud.ouraring.com → Account → Developer → Personal Access Tokens</strong>.<br>
+          Add it to <code style="background:var(--bg-input);padding:1px 6px;border-radius:3px;font-family:var(--font-mono)">.env</code> as <code style="background:var(--bg-input);padding:1px 6px;border-radius:3px;font-family:var(--font-mono)">OURA_PERSONAL_ACCESS_TOKEN=your_token</code>, then restart the server.
+        </p>
+        <button class="btn btn-secondary" onclick="navigate('oura')">Go to Oura → Test Connection</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Apple Health — Run Import</div>
+        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">
+          Export from <strong style="color:var(--text-primary)">Health Auto Export</strong> app as JSON, or use the standard Apple Health XML export. Supports JSON arrays with fields: <code style="background:var(--bg-input);padding:1px 5px;border-radius:3px;font-family:var(--font-mono);font-size:11px">date, distance_km, duration_minutes, avg_hr, max_hr</code>
+        </p>
+        <div class="file-drop" onclick="document.getElementById('health-file').click()">
+          <input type="file" id="health-file" accept=".json,.xml,.csv" onchange="handleHealthFile(this)">
+          <p>Click to select file &nbsp;·&nbsp; JSON, CSV, or Apple Health XML</p>
+        </div>
+        <div id="import-status" style="margin-top:12px;font-size:12px;color:var(--text-muted);font-family:var(--font-mono)"></div>
+      </div>
+    </div>
+
+    <!-- ── MEDICATIONS ───────────────────────────── -->
+    <div class="panel" id="panel-medications">
+      <div class="page-header">
+        <h2>Medications &amp; Supplements</h2>
+        <p>Manage your current and paused medications</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Add new</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+          <div>
+            <label>Name</label>
+            <input type="text" id="new-med-name" placeholder="e.g. Naproxen">
+          </div>
+          <div>
+            <label>Category</label>
+            <select id="new-med-category">
+              <option value="prescribed">Prescribed</option>
+              <option value="prn">PRN (as needed)</option>
+              <option value="supplement">Supplement</option>
+            </select>
+          </div>
+          <div>
+            <label>Doses per day</label>
+            <input type="number" id="new-med-doses" min="1" max="6" value="1">
+          </div>
+          <div>
+            <label>Dose labels (comma separated)</label>
+            <input type="text" id="new-med-labels" placeholder="e.g. Morning,Evening">
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Notes</label>
+          <input type="text" id="new-med-notes" placeholder="e.g. Take with food">
+        </div>
+        <button class="btn btn-primary" onclick="addMedication()">Add medication</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Active</div>
+        <div id="med-list-active"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Paused</div>
+        <div id="med-list-paused"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Archived / stopped</div>
+        <div id="med-list-archived"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ── Helpers ──────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const today = () => new Date().toISOString().split('T')[0];
+
+function toast(msg, type = 'success') {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = `show ${type}`;
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+function fmtDate(d) {
+  return new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function daysAgo(n) {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.toISOString().split('T')[0];
+}
+
+// ── Navigation ────────────────────────────────────────────
+function navigate(name) {
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(el => el.classList.remove('active'));
+  document.querySelector(`[data-panel="${name}"]`).classList.add('active');
+  $(`panel-${name}`).classList.add('active');
+  if (name === 'dashboard') loadDashboard();
+  if (name === 'oura') loadOuraTable();
+  if (name === 'medications') loadMedsConfig();
+  if (name === 'history') loadHistory(true);
+  if (name === 'insights') loadInsights();
+}
+
+document.querySelectorAll('.nav-item').forEach(el => {
+  el.addEventListener('click', () => navigate(el.dataset.panel));
+});
+
+// ── Init ──────────────────────────────────────────────────
+const PAIN_AREAS = [
+  { key: 'pain_hands',      label: 'Hands' },
+  { key: 'pain_shoulders',  label: 'Shoulders' },
+  { key: 'pain_neck',       label: 'Neck' },
+  { key: 'pain_upper_back', label: 'Upper Back' },
+  { key: 'pain_arms',       label: 'Arms' },
+];
+
+function init() {
+  const now = new Date();
+  const dateStr = today();
+  const formatted = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+  $('brand-date').textContent = dateStr;
+  $('sidebar-day').textContent = now.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+  $('log-date-label').textContent = formatted;
+  $('med-date-label').textContent = dateStr;
+
+  loadMedsConfig();
+  checkTodayEntry();
+  scheduleMidnightSave();
+  loadInsights();
+
+  // Build pain sliders
+  const wrap = $('pain-sliders');
+  PAIN_AREAS.forEach(({ key, label }) => {
+    wrap.innerHTML += `
+      <div class="slider-row">
+        <span class="slider-label">${label}</span>
+        <div class="slider-wrap">
+          <input type="range" id="${key}" name="${key}" min="0" max="10" value="0" oninput="updateSlider(this)">
+        </div>
+        <span class="slider-val val-low" id="${key}-val">0</span>
+      </div>`;
+  });
+}
+
+function updateSlider(el) {
+  const val = parseInt(el.value);
+  const span = document.getElementById(el.id + '-val');
+  span.textContent = val;
+  span.className = 'slider-val ' + (val <= 3 ? 'val-low' : val <= 6 ? 'val-mid' : 'val-high');
+}
+
+// ── Symptom form ──────────────────────────────────────────
+$('symptom-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const dateStr = window._editingDate || today();
+
+  const payload = {
+    date: dateStr,
+    morning_stiffness_minutes: parseInt($('stiffness').value) || null,
+    swelling_level: $('swelling').value !== '' ? parseInt($('swelling').value) : null,
+    grip_strength_left: parseInt($('grip-left').value) || null,
+    grip_strength_right: parseInt($('grip-right').value) || null,
+    fatigue_level: parseInt($('fatigue').value),
+    notes: $('notes').value.trim() || null,
+    auto_saved: 0,
+  };
+
+  PAIN_AREAS.forEach(({ key }) => {
+    payload[key] = parseInt(document.getElementById(key).value);
+  });
+
+  try {
+    const r = await fetch('/api/symptoms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!r.ok) throw new Error(await r.text());
+    toast('Symptoms saved');
+    localStorage.removeItem(`draft-${dateStr}`);
+    await saveDynamicMeds(dateStr);
+
+    // Reset editing state back to today
+    window._editingDate = null;
+    const header = $('log-date-label');
+    if (header) header.textContent = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const submitBtn = document.querySelector('#symptom-form button[type="submit"]');
+    if (submitBtn) submitBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2,7 5.5,11 12,3"/></svg> Update today's log`;
+  } catch (err) {
+    toast('Error: ' + err.message, 'error');
+  }
+});
+
+function populateForm(data) {
+  PAIN_AREAS.forEach(({ key }) => {
+    const el = document.getElementById(key);
+    if (el && data[key] != null) { el.value = data[key]; updateSlider(el); }
+  });
+  if (data.morning_stiffness_minutes) $('stiffness').value = data.morning_stiffness_minutes;
+  if (data.swelling_level != null) $('swelling').value = data.swelling_level;
+  if (data.grip_strength_left) $('grip-left').value = data.grip_strength_left;
+  if (data.grip_strength_right) $('grip-right').value = data.grip_strength_right;
+  const fatigue = $('fatigue');
+  if (data.fatigue_level != null) { fatigue.value = data.fatigue_level; updateSlider(fatigue); }
+  if (data.notes) $('notes').value = data.notes;
+}
+
+async function checkTodayEntry() {
+  try {
+    const r = await fetch(`/api/symptoms/${today()}`);
+    const data = await r.json();
+    const submitBtn = document.querySelector('#symptom-form button[type="submit"]');
+    if (data && data.date) {
+      populateForm(data);
+      if (submitBtn) submitBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2,7 5.5,11 12,3"/></svg> Update today's log`;
+    } else {
+      restoreDraft();
+    }
+  } catch (err) {
+    restoreDraft();
+  }
+}
+
+function saveDraft() {
+  const draft = {
+    stiffness: $('stiffness').value,
+    swelling: $('swelling').value,
+    gripLeft: $('grip-left').value,
+    gripRight: $('grip-right').value,
+    fatigue: $('fatigue').value,
+    notes: $('notes').value,
+  };
+  PAIN_AREAS.forEach(({ key }) => {
+    const el = document.getElementById(key);
+    if (el) draft[key] = el.value;
+  });
+  localStorage.setItem(`draft-${today()}`, JSON.stringify(draft));
+}
+
+function restoreDraft() {
+  const raw = localStorage.getItem(`draft-${today()}`);
+  if (!raw) return;
+  try {
+    const draft = JSON.parse(raw);
+    if (draft.stiffness) $('stiffness').value = draft.stiffness;
+    if (draft.swelling)  $('swelling').value  = draft.swelling;
+    if (draft.gripLeft)  $('grip-left').value  = draft.gripLeft;
+    if (draft.gripRight) $('grip-right').value = draft.gripRight;
+    if (draft.notes)     $('notes').value      = draft.notes;
+    const fatigue = $('fatigue');
+    if (draft.fatigue != null) { fatigue.value = draft.fatigue; updateSlider(fatigue); }
+    PAIN_AREAS.forEach(({ key }) => {
+      const el = document.getElementById(key);
+      if (el && draft[key] != null) { el.value = draft[key]; updateSlider(el); }
+    });
+  } catch (err) {
+    console.error('Draft restore error:', err);
+  }
+}
+
+function scheduleMidnightSave() {
+  const now = new Date();
+  const midnight = new Date();
+  midnight.setHours(24, 0, 0, 0);
+  setTimeout(async () => {
+    await autoSaveEntry();
+    scheduleMidnightSave();
+  }, midnight - now);
+}
+
+async function autoSaveEntry() {
+  const dateStr = today();
+  const payload = { date: dateStr, auto_saved: 1,
+    morning_stiffness_minutes: parseInt($('stiffness').value) || null,
+    swelling_level: $('swelling').value !== '' ? parseInt($('swelling').value) : null,
+    grip_strength_left: parseInt($('grip-left').value) || null,
+    grip_strength_right: parseInt($('grip-right').value) || null,
+    fatigue_level: parseInt($('fatigue').value) || 0,
+    notes: $('notes').value.trim() || null,
+  };
+  PAIN_AREAS.forEach(({ key }) => {
+    const el = document.getElementById(key);
+    payload[key] = el ? parseInt(el.value) : 0;
+  });
+  try {
+    await fetch('/api/symptoms', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    localStorage.removeItem(`draft-${dateStr}`);
+    console.log('Midnight auto-save completed for', dateStr);
+  } catch (err) {
+    console.error('Auto-save failed:', err);
+  }
+}
+
+async function editEntry(date) {
+  try {
+    const r = await fetch(`/api/symptoms/${date}`);
+    const data = await r.json();
+    if (!data) { toast('No entry found for that date', 'error'); return; }
+    populateForm(data);
+    const formatted = new Date(date + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const header = $('log-date-label');
+    if (header) header.textContent = formatted;
+    const submitBtn = document.querySelector('#symptom-form button[type="submit"]');
+    if (submitBtn) submitBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2,7 5.5,11 12,3"/></svg> Update entry for ${new Date(date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`;
+    window._editingDate = date;
+    navigate('log');
+    toast(`Editing entry for ${formatted}`);
+  } catch (err) {
+    toast('Error loading entry: ' + err.message, 'error');
+  }
+}
+
+// ── Charts ────────────────────────────────────────────────
+const CHART_COLORS = {
+  pain_hands:      '#e05c5c',
+  pain_shoulders:  '#d4a84b',
+  pain_neck:       '#a78bfa',
+  pain_upper_back: '#60a5fa',
+  pain_arms:       '#f472b6',
+};
+
+let charts = {};
+
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+const chartDefaults = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: { legend: { labels: { color: '#6b6b6b', font: { size: 11, family: "'Outfit'" }, boxWidth: 10 } } },
+  scales: {
+    x: { ticks: { color: '#a8a8a8', font: { size: 10 } }, grid: { color: '#f0ede8' } },
+    y: { ticks: { color: '#a8a8a8', font: { size: 10 } }, grid: { color: '#f0ede8' } },
+  },
+};
+
+async function loadDashboard() {
+  try {
+    const r = await fetch(`/api/health/summary?start=${daysAgo(30)}&end=${today()}`);
+    const timeline = await r.json();
+
+    if (!timeline.length) {
+      $('stat-avg-pain').textContent = '—';
+      $('stat-avg-hrv').textContent = '—';
+      $('stat-runs').textContent = '0';
+      renderEmptyCharts();
+      return;
+    }
+
+    const last7 = timeline.slice(-7);
+
+    // Stat tiles
+    const painScores = last7.filter(d => d.symptoms).map(d => {
+      const s = d.symptoms;
+      const vals = PAIN_AREAS.map(a => s[a.key]).filter(v => v != null);
+      return vals.length ? vals.reduce((a,b) => a+b) / vals.length : null;
+    }).filter(v => v != null);
+    $('stat-avg-pain').textContent = painScores.length ? (painScores.reduce((a,b)=>a+b)/painScores.length).toFixed(1) : '—';
+
+    const hrvScores = last7.filter(d => d.oura?.hrv_average).map(d => d.oura.hrv_average);
+    $('stat-avg-hrv').textContent = hrvScores.length ? Math.round(hrvScores.reduce((a,b)=>a+b)/hrvScores.length) : '—';
+
+    $('stat-runs').textContent = timeline.filter(d => d.runs?.length).length;
+
+    renderPainChart(timeline);
+    renderSleepChart(timeline);
+    renderHrvPainChart(timeline);
+  } catch (err) {
+    console.error('Dashboard load error:', err);
+  }
+}
+
+function renderPainChart(timeline) {
+  destroyChart('pain');
+  const labels = timeline.map(d => d.date.slice(5));
+  const runDates = new Set(timeline.filter(d => d.runs?.length).map(d => d.date.slice(5)));
+
+  const datasets = PAIN_AREAS.map(({ key, label }) => ({
+    label,
+    data: timeline.map(d => d.symptoms?.[key] ?? null),
+    borderColor: CHART_COLORS[key],
+    backgroundColor: CHART_COLORS[key] + '22',
+    tension: .35,
+    pointRadius: 3,
+    pointHoverRadius: 5,
+    spanGaps: true,
+  }));
+
+  const ctx = $('chart-pain').getContext('2d');
+  charts.pain = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      ...chartDefaults,
+      scales: {
+        ...chartDefaults.scales,
+        y: { ...chartDefaults.scales.y, min: 0, max: 10 },
+        x: {
+          ...chartDefaults.scales.x,
+          ticks: { color: l => runDates.has(l) ? '#2ec4b6' : '#3d5470', font: { size: 10 } },
+        }
+      },
+      plugins: {
+        ...chartDefaults.plugins,
+        annotation: undefined,
+      }
+    },
+  });
+}
+
+function renderSleepChart(timeline) {
+  destroyChart('sleep');
+  const withOura = timeline.filter(d => d.oura);
+  const labels = withOura.map(d => d.date.slice(5));
+  const ctx = $('chart-sleep').getContext('2d');
+  charts.sleep = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Sleep score',
+          data: withOura.map(d => d.oura.sleep_score),
+          borderColor: '#2ec4b6',
+          backgroundColor: 'rgba(46,196,182,.08)',
+          tension: .3,
+          pointRadius: 3,
+          fill: true,
+        },
+        {
+          label: 'Readiness',
+          data: withOura.map(d => d.oura.readiness_score),
+          borderColor: '#60a5fa',
+          tension: .3,
+          pointRadius: 2,
+        },
+      ],
+    },
+    options: { ...chartDefaults, scales: { ...chartDefaults.scales, y: { ...chartDefaults.scales.y, min: 0, max: 100 } } },
+  });
+}
+
+function renderHrvPainChart(timeline) {
+  destroyChart('hrv-pain');
+  const points = timeline
+    .filter(d => d.oura?.hrv_average && d.symptoms)
+    .map(d => {
+      const s = d.symptoms;
+      const vals = PAIN_AREAS.map(a => s[a.key]).filter(v => v != null);
+      const avgPain = vals.length ? vals.reduce((a,b)=>a+b)/vals.length : null;
+      return avgPain != null ? { x: d.oura.hrv_average, y: avgPain, date: d.date } : null;
+    })
+    .filter(Boolean);
+
+  const ctx = $('chart-hrv-pain').getContext('2d');
+  charts['hrv-pain'] = new Chart(ctx, {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        label: 'HRV vs Avg Pain',
+        data: points,
+        backgroundColor: 'rgba(46,196,182,.6)',
+        pointRadius: 5,
+      }],
+    },
+    options: {
+      ...chartDefaults,
+      plugins: { ...chartDefaults.plugins, tooltip: { callbacks: { label: ctx => `HRV: ${ctx.raw.x}, Pain: ${ctx.raw.y.toFixed(1)} (${ctx.raw.date})` } } },
+      scales: {
+        x: { ...chartDefaults.scales.x, title: { display: true, text: 'HRV (ms)', color: '#3d5470', font: { size: 10 } } },
+        y: { ...chartDefaults.scales.y, title: { display: true, text: 'Avg Pain', color: '#3d5470', font: { size: 10 } }, min: 0, max: 10 },
+      },
+    },
+  });
+}
+
+function renderEmptyCharts() {
+  ['chart-pain','chart-sleep','chart-hrv-pain'].forEach(id => {
+    const canvas = $(id);
+    const wrap = canvas.parentElement;
+    wrap.innerHTML = '<div class="empty"><span>∿</span>No data yet — log symptoms &amp; sync Oura to populate charts</div>';
+  });
+}
+
+// ── Oura ──────────────────────────────────────────────────
+async function testOura() {
+  const statusEl = $('oura-status');
+  statusEl.innerHTML = '<span class="status-dot"></span>Testing…';
+  statusEl.className = 'status status-idle';
+  try {
+    const r = await fetch('/api/oura/test');
+    const data = await r.json();
+    if (data.ok) {
+      statusEl.innerHTML = `<span class="status-dot"></span>Connected`;
+      statusEl.className = 'status status-ok';
+      toast('Oura connection OK');
+    } else {
+      throw new Error(data.error);
+    }
+  } catch (err) {
+    statusEl.innerHTML = `<span class="status-dot"></span>Failed`;
+    statusEl.className = 'status status-err';
+    toast('Connection failed: ' + err.message, 'error');
+  }
+}
+
+async function syncOura(days) {
+  const statusEl = $('sync-status');
+  statusEl.textContent = `Syncing ${days} days…`;
+  try {
+    const start = daysAgo(days);
+    const r = await fetch('/api/oura/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ start_date: start, end_date: today() }),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error);
+    statusEl.textContent = `Synced ${data.synced} records (${start} → ${today()})`;
+    toast(`Synced ${data.synced} days of Oura data`);
+    loadOuraTable();
+  } catch (err) {
+    statusEl.textContent = 'Error: ' + err.message;
+    toast('Sync failed: ' + err.message, 'error');
+  }
+}
+
+async function syncOura30() {
+  navigate('oura');
+  await syncOura(30);
+}
+
+async function loadOuraTable() {
+  try {
+    const r = await fetch('/api/oura/data');
+    const rows = await r.json();
+    const wrap = $('oura-table-wrap');
+
+    if (!rows.length) {
+      wrap.innerHTML = '<div class="empty"><span>◎</span>No Oura data synced yet</div>';
+      return;
+    }
+
+    const scoreClass = v => !v ? '' : v >= 80 ? 'score-good' : v >= 60 ? 'score-mid' : 'score-bad';
+
+    const hrvClass = v => !v ? '' : v >= 40 ? 'score-good' : v >= 25 ? 'score-mid' : 'score-bad';
+    const fmtMins = m => m ? Math.floor(m / 60) + 'h ' + (m % 60) + 'm' : '-';
+
+    wrap.innerHTML = `<div style="overflow-x:auto"><table class="data-table">
+      <thead><tr>
+        <th>Date</th><th>Sleep</th><th>Readiness</th><th>HRV (ms)</th><th>Resting HR</th><th>Deep sleep</th><th>REM</th><th>Efficiency</th>
+      </tr></thead>
+      <tbody>
+        ${rows.slice(0, 60).map(r => `<tr>
+          <td>${fmtDate(r.date)}</td>
+          <td class="cell-score ${scoreClass(r.sleep_score)}">${r.sleep_score ?? '-'}</td>
+          <td class="cell-score ${scoreClass(r.readiness_score)}">${r.readiness_score ?? '-'}</td>
+          <td class="cell-score ${hrvClass(r.hrv_average)}">${r.hrv_average ? Math.round(r.hrv_average) : '-'}</td>
+          <td>${r.resting_hr ?? '-'}</td>
+          <td>${fmtMins(r.deep_sleep_minutes)}</td>
+          <td>${fmtMins(r.rem_sleep_minutes)}</td>
+          <td>${r.efficiency ? r.efficiency + '%' : '-'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div>`;
+  } catch (err) {
+    toast('Error loading Oura data', 'error');
+  }
+}
+
+// ── Apple Health import ────────────────────────────────────
+async function handleHealthFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const statusEl = $('import-status');
+
+  // Large XML files — stream to server
+  if (file.name.endsWith('.xml')) {
+    statusEl.innerHTML = `
+      <div style="margin-bottom:8px">Uploading ${(file.size / 1024 / 1024).toFixed(0)}MB file — this may take a minute…</div>
+      <div style="background:var(--border);border-radius:4px;height:4px;width:100%">
+        <div id="import-progress" style="background:var(--teal);height:4px;border-radius:4px;width:0%;transition:width .3s"></div>
+      </div>`;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const xhr = new XMLHttpRequest();
+
+    xhr.upload.onprogress = e => {
+      if (e.lengthComputable) {
+        const pct = Math.round((e.loaded / e.total) * 100);
+        const bar = $('import-progress');
+        if (bar) bar.style.width = pct + '%';
+        statusEl.querySelector('div').textContent = `Uploading… ${pct}%`;
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status === 200) {
+        const result = JSON.parse(xhr.responseText);
+        statusEl.innerHTML = `<div style="color:var(--green)">Imported ${result.inserted} runs from ${result.processed} workouts found.</div>`;
+        toast(`Imported ${result.inserted} runs`);
+      } else {
+        statusEl.innerHTML = `<div style="color:var(--red)">Error: ${xhr.responseText}</div>`;
+        toast('Import failed', 'error');
+      }
+      input.value = '';
+    };
+
+    xhr.onerror = () => {
+      statusEl.innerHTML = `<div style="color:var(--red)">Upload failed — check the server is running.</div>`;
+      toast('Upload failed', 'error');
+    };
+
+    xhr.open('POST', '/api/health/import-xml');
+    xhr.send(formData);
+    return;
+  }
+
+  // JSON / CSV — small enough to handle in browser
+  statusEl.textContent = 'Reading file…';
+  try {
+    const text = await file.text();
+    let runs = [];
+
+    if (file.name.endsWith('.json')) {
+      const parsed = JSON.parse(text);
+      const arr = Array.isArray(parsed) ? parsed : (parsed.data || parsed.workouts || [parsed]);
+      runs = arr.filter(w => {
+        const t = (w.workoutActivityType || w.type || '').toLowerCase();
+        return t.includes('run') || t === 'running';
+      }).map(w => ({
+        date: (w.startDate || w.date || '').split('T')[0],
+        distance_km: w.distance_km ?? (w.totalDistance ? parseFloat(w.totalDistance) : null),
+        duration_minutes: w.duration_minutes ?? (w.duration ? parseFloat(w.duration) : null),
+        avg_hr: w.avg_hr ?? w.averageHeartRate ?? null,
+        max_hr: w.max_hr ?? w.maxHeartRate ?? null,
+        source: 'apple_health',
+      })).filter(r => r.date);
+
+    } else if (file.name.endsWith('.csv')) {
+      const lines = text.trim().split('\n');
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/\s/g, '_'));
+      lines.slice(1).forEach(line => {
+        const vals = line.split(',');
+        const obj = {};
+        headers.forEach((h, i) => obj[h] = vals[i]?.trim());
+        if (!obj.date) return;
+        runs.push({
+          date: obj.date.split('T')[0],
+          distance_km: obj.distance_km ? parseFloat(obj.distance_km) : null,
+          duration_minutes: obj.duration_minutes ? parseFloat(obj.duration_minutes) : null,
+          avg_hr: obj.avg_hr ? parseInt(obj.avg_hr) : null,
+          max_hr: obj.max_hr ? parseInt(obj.max_hr) : null,
+          source: 'apple_health_csv',
+        });
+      });
+    }
+
+    if (!runs.length) {
+      statusEl.textContent = 'No running workouts found in file.';
+      toast('No runs found', 'error');
+      return;
+    }
+
+    statusEl.textContent = `Found ${runs.length} runs, uploading…`;
+    const r = await fetch('/api/health/runs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(runs),
+    });
+    const result = await r.json();
+    statusEl.textContent = `Imported ${result.inserted} runs successfully.`;
+    toast(`Imported ${result.inserted} runs`);
+    input.value = '';
+  } catch (err) {
+    statusEl.textContent = 'Error: ' + err.message;
+    toast('Import failed: ' + err.message, 'error');
+  }
+}
+
+// ── Insights ──────────────────────────────────────────────
+async function loadInsights() {
+  // Restore cached AI analysis
+  const cached = localStorage.getItem('insights_cache');
+  const outputEl = $('insights-output');
+  const lastGenEl = $('insights-last-generated');
+  if (cached) {
+    try {
+      const { html, generatedAt, range } = JSON.parse(cached);
+      outputEl.innerHTML = html;
+      const d = new Date(generatedAt);
+      const label = d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) +
+        ' at ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) +
+        (range ? ` · ${range === 'month' ? 'last 30 days' : 'last 7 days'}` : '');
+      lastGenEl.textContent = 'Last generated: ' + label;
+      lastGenEl.style.display = 'block';
+    } catch (_) { /* ignore corrupt cache */ }
+  }
+
+  // Always refresh the "How you're feeling" card from live data
+  try {
+    const [symptomsRes, ouraRes, medsRes] = await Promise.all([
+      fetch(`/api/symptoms/${today()}`),
+      fetch(`/api/oura/data`),
+      fetch(`/api/medications?date=${today()}`),
+    ]);
+    const symptom = await symptomsRes.json();
+    const ouraRows = await ouraRes.json();
+    const todayMeds = await medsRes.json();
+    const todayOura = Array.isArray(ouraRows) ? ouraRows.find(r => r.date === today()) : null;
+
+    if (symptom) {
+      const painVals = ['pain_hands','pain_shoulders','pain_neck','pain_upper_back','pain_arms']
+        .map(k => symptom[k]).filter(v => v != null);
+      const avg = painVals.length ? painVals.reduce((a,b) => a+b) / painVals.length : null;
+      let summary = '';
+      if (avg !== null) {
+        summary += avg <= 2 ? 'Pain is low today — a good day. ' : avg <= 5 ? 'Moderate pain today. ' : 'Pain is quite high today — take it easy. ';
+      }
+      if (symptom.morning_stiffness_minutes) {
+        summary += `Morning stiffness lasted ${symptom.morning_stiffness_minutes} minutes. `;
+      }
+      if (symptom.fatigue_level != null) {
+        summary += symptom.fatigue_level <= 3 ? 'Energy is decent today. ' : symptom.fatigue_level <= 6 ? `Fatigue is moderate (${symptom.fatigue_level}/10). ` : `Feeling quite fatigued today (${symptom.fatigue_level}/10). `;
+      }
+      if (todayOura?.sleep_score) {
+        summary += todayOura.sleep_score >= 80 ? `Good sleep last night (${todayOura.sleep_score}). ` : `Sleep was below par (${todayOura.sleep_score}). `;
+      }
+      if (todayOura?.hrv_average) {
+        summary += `HRV: ${Math.round(todayOura.hrv_average)} ms. `;
+      }
+
+      // Medication note
+      if (Array.isArray(todayMeds) && todayMeds.length > 0) {
+        const diclofenacTaken = todayMeds.filter(m => m.medication === 'diclofenac' && m.taken).length;
+        const diclofenacMissed = todayMeds.filter(m => m.medication === 'diclofenac' && !m.taken).length;
+        const otherMissed = todayMeds.filter(m => m.medication !== 'diclofenac' && !m.taken).map(m => m.medication);
+        if (diclofenacMissed > 0) {
+          summary += `${diclofenacMissed} Diclofenac dose${diclofenacMissed > 1 ? 's' : ''} missed today - pain may be higher without full anti-inflammatory cover. `;
+        } else if (diclofenacTaken === 3) {
+          summary += 'All 3 Diclofenac doses taken today. ';
+        } else if (diclofenacTaken > 0) {
+          summary += `${diclofenacTaken}/3 Diclofenac doses taken so far. `;
+        }
+        if (otherMissed.length > 0) {
+          summary += `Also missed: ${otherMissed.join(', ')}. `;
+        }
+      } else if (Array.isArray(todayMeds) && todayMeds.length === 0) {
+        summary += 'No medications logged yet today. ';
+      }
+
+      if (summary) {
+        $('feeling-summary').textContent = summary;
+      }
+    } else {
+      // Check if there's a draft
+      const draft = localStorage.getItem(`draft_${today()}`);
+      if (draft) {
+        $('feeling-summary').textContent = 'You have an unsaved draft for today — log your symptoms to generate your summary.';
+      }
+    }
+  } catch (_) { /* silently skip if offline */ }
+}
+
+async function runInsights(range = 'week') {
+  const loadingEl = $('insights-loading');
+  const outputEl = $('insights-output');
+  loadingEl.style.display = 'block';
+  outputEl.textContent = '';
+
+  try {
+    const days = range === 'month' ? 30 : 7;
+    const summaryRes = await fetch(`/api/health/summary?start=${daysAgo(days)}&end=${today()}`);
+    const timeline = await summaryRes.json();
+
+    if (!timeline.length) {
+      outputEl.textContent = 'No data available for this period. Log some symptoms and sync Oura first.';
+      loadingEl.style.display = 'none';
+      return;
+    }
+
+    const dataBlock = JSON.stringify(timeline, null, 2);
+
+    const prompt = `You are a helpful health assistant for Josh, a 32-year-old with suspected inflammatory arthritis (positive Anti-CCP at 83 U/ml, pending rheumatology referral). He runs 2-4x per week and uses an Oura ring. His main symptoms are stiff/swollen hands, shoulder, neck and upper back joint pain.
+
+Here is his health data for the last ${days} days (symptoms, Oura sleep/HRV/readiness, runs, and medication logs):
+
+${dataBlock}
+
+Please give Josh a friendly, plain-English analysis. The medication data shows logged doses (medication name, dose_number, taken=1 means taken, taken=0 means skipped). Days with no medication entries mean nothing was logged that day. Note patterns between missed Diclofenac doses and pain levels if visible.
+
+Keep it warm, direct and concise - no medical diagnoses, just honest pattern observation. Use plain paragraphs, no bullet points.`;
+
+    const response = await fetch('/api/insights', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt }),
+    });
+
+    const result = await response.json();
+    if (result.error) throw new Error(result.error);
+    const renderedHtml = result.analysis
+      .split('\n')
+      .map(line => {
+        if (line.match(/^[A-Z][A-Z\s+]+$/)) {
+          return `<div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-secondary);margin-top:20px;margin-bottom:6px">${line}</div>`;
+        }
+        if (line.trim() === '') return '';
+        return `<div style="font-size:14px;color:var(--text-primary);line-height:1.7;margin-bottom:4px">${line}</div>`;
+      })
+      .join('');
+    outputEl.innerHTML = renderedHtml;
+
+    // Persist to localStorage so it survives navigation/reload
+    const generatedAt = new Date().toISOString();
+    localStorage.setItem('insights_cache', JSON.stringify({ html: renderedHtml, generatedAt, range }));
+    const lastGenEl = $('insights-last-generated');
+    const d = new Date(generatedAt);
+    const label = d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) +
+      ' at ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) +
+      ` · ${range === 'month' ? 'last 30 days' : 'last 7 days'}`;
+    lastGenEl.textContent = 'Last generated: ' + label;
+    lastGenEl.style.display = 'block';
+
+    updateFeelingCard(timeline);
+  } catch (err) {
+    outputEl.textContent = 'Error generating insights: ' + err.message;
+  } finally {
+    loadingEl.style.display = 'none';
+  }
+}
+
+function updateFeelingCard(timeline) {
+  const latest = timeline[timeline.length - 1];
+  if (!latest?.symptoms) return;
+  const s = latest.symptoms;
+  const painVals = ['pain_hands','pain_shoulders','pain_neck','pain_upper_back','pain_arms']
+    .map(k => s[k]).filter(v => v != null);
+  const avg = painVals.length ? painVals.reduce((a,b) => a+b) / painVals.length : null;
+  const oura = latest.oura;
+
+  let summary = '';
+  if (avg !== null) {
+    summary += avg <= 2 ? 'Pain is low today — a good day. ' : avg <= 5 ? 'Moderate pain today. ' : 'Pain is quite high today — take it easy. ';
+  }
+  if (s.morning_stiffness_minutes) {
+    summary += `Morning stiffness lasted ${s.morning_stiffness_minutes} minutes. `;
+  }
+  if (oura?.sleep_score) {
+    summary += oura.sleep_score >= 80 ? `Good sleep last night (${oura.sleep_score}). ` : `Sleep was below par (${oura.sleep_score}). `;
+  }
+  if (oura?.hrv_average) {
+    summary += `HRV is ${Math.round(oura.hrv_average)} ms. `;
+  }
+  if (summary) $('feeling-summary').textContent = summary;
+}
+
+function setupReminders() {
+  const times = [
+    $('reminder-1').value,
+    $('reminder-2').value,
+    $('reminder-3').value,
+  ];
+  const statusEl = $('reminder-status');
+
+  if ('Notification' in window) {
+    Notification.requestPermission().then(permission => {
+      if (permission === 'granted') {
+        scheduleNotifications(times);
+        statusEl.textContent = `Reminders set for ${times.join(', ')}. Keep the app open for notifications to fire.`;
+      } else {
+        statusEl.textContent = 'Notification permission denied. Enable in system settings.';
+      }
+    });
+  } else {
+    statusEl.textContent = 'Notifications not supported in this browser.';
+  }
+}
+
+function scheduleNotifications(times) {
+  times.forEach((time, i) => {
+    const [h, m] = time.split(':').map(Number);
+    const now = new Date();
+    const next = new Date();
+    next.setHours(h, m, 0, 0);
+    if (next <= now) next.setDate(next.getDate() + 1);
+    const delay = next - now;
+    setTimeout(() => {
+      new Notification("Josh's Health", {
+        body: `Time for Diclofenac dose ${i + 1}`,
+      });
+    }, delay);
+  });
+}
+
+// Set insights date label
+const insightsDateLabel = $('insights-date-label');
+if (insightsDateLabel) {
+  insightsDateLabel.textContent = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+// ── Medications config ────────────────────────────────────
+let medsConfig = [];
+
+async function loadMedsConfig() {
+  try {
+    const r = await fetch('/api/medications/config');
+    medsConfig = await r.json();
+    renderMedGroups();
+    renderMedLists();
+  } catch (err) {
+    console.error('Failed to load meds config:', err);
+  }
+}
+
+function renderMedGroups() {
+  const active = medsConfig.filter(m => m.active && !m.archived);
+  const wrap = $('med-groups-dynamic');
+  if (!wrap) return;
+  if (!active.length) {
+    wrap.innerHTML = '<p style="font-size:13px;color:var(--text-muted)">No active medications configured.</p>';
+    return;
+  }
+
+  const categories = ['prescribed', 'prn', 'supplement'];
+  const categoryLabels = { prescribed: 'Prescribed', prn: 'PRN', supplement: 'Supplement' };
+
+  wrap.innerHTML = categories.map(cat => {
+    const meds = active.filter(m => m.category === cat);
+    if (!meds.length) return '';
+    return meds.map(med => {
+      const labels = med.dose_labels ? med.dose_labels.split(',') : Array.from({ length: med.doses_per_day }, (_, i) => `Dose ${i + 1}`);
+      return `<div class="med-group">
+        <div class="med-name">${med.name} <span class="med-tag">${categoryLabels[cat] || cat}</span></div>
+        <div class="checkbox-row">
+          ${labels.map((label, i) => `
+            <label class="checkbox-item">
+              <input type="checkbox" name="med_${med.id}" value="${i + 1}">
+              <span>${label.trim()}</span>
+            </label>`).join('')}
+        </div>
+      </div>`;
+    }).join('');
+  }).join('');
+}
+
+function renderMedLists() {
+  const active   = medsConfig.filter(m =>  m.active && !m.archived);
+  const paused   = medsConfig.filter(m => !m.active && !m.archived);
+  const archived = medsConfig.filter(m =>  m.archived);
+
+  const renderList = (meds) => {
+    if (!meds.length) return '<p style="font-size:13px;color:var(--text-muted);padding:8px 0">None</p>';
+    return meds.map(m => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+        <div>
+          <span style="font-size:14px;font-weight:500;color:var(--text-primary)">${m.name}</span>
+          <span class="med-tag" style="margin-left:8px">${m.category}</span>
+          ${m.notes ? `<span style="font-size:12px;color:var(--text-muted);margin-left:8px">${m.notes}</span>` : ''}
+        </div>
+        <div style="display:flex;gap:8px">
+          ${m.active && !m.archived  ? `<button class="btn btn-secondary" style="padding:5px 10px;font-size:12px" onclick="toggleMed(${m.id}, 0)">Pause</button>` : ''}
+          ${!m.active && !m.archived ? `<button class="btn btn-secondary" style="padding:5px 10px;font-size:12px" onclick="toggleMed(${m.id}, 1)">Resume</button>` : ''}
+          ${!m.archived ? `<button class="btn btn-secondary" style="padding:5px 10px;font-size:12px;color:var(--red)" onclick="archiveMed(${m.id})">Archive</button>` : ''}
+        </div>
+      </div>`).join('');
+  };
+
+  if ($('med-list-active'))   $('med-list-active').innerHTML   = renderList(active);
+  if ($('med-list-paused'))   $('med-list-paused').innerHTML   = renderList(paused);
+  if ($('med-list-archived')) $('med-list-archived').innerHTML = renderList(archived);
+}
+
+async function addMedication() {
+  const name = $('new-med-name').value.trim();
+  if (!name) { toast('Enter a medication name', 'error'); return; }
+  await fetch('/api/medications/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name,
+      category: $('new-med-category').value,
+      doses_per_day: parseInt($('new-med-doses').value) || 1,
+      dose_labels: $('new-med-labels').value.trim(),
+      notes: $('new-med-notes').value.trim(),
+    }),
+  });
+  toast(`${name} added`);
+  $('new-med-name').value = '';
+  $('new-med-labels').value = '';
+  $('new-med-notes').value = '';
+  loadMedsConfig();
+}
+
+async function toggleMed(id, active) {
+  await fetch(`/api/medications/config/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ active }),
+  });
+  loadMedsConfig();
+  toast(active ? 'Medication resumed' : 'Medication paused');
+}
+
+async function archiveMed(id) {
+  await fetch(`/api/medications/config/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ archived: 1, active: 0, stopped_at: today() }),
+  });
+  loadMedsConfig();
+  toast('Medication archived');
+}
+
+async function saveDynamicMeds(dateStr) {
+  const active = medsConfig.filter(m => m.active && !m.archived);
+  for (const med of active) {
+    const boxes = document.querySelectorAll(`[name="med_${med.id}"]:checked`);
+    for (const box of boxes) {
+      await fetch('/api/medications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: dateStr, medication: med.name, dose_number: parseInt(box.value), taken: 1 }),
+      });
+    }
+  }
+}
+
+// ── History ───────────────────────────────────────────────
+async function loadHistory(last30 = false) {
+  const listEl = $('history-list');
+  listEl.innerHTML = '<div style="font-size:13px;color:var(--text-muted)">Loading…</div>';
+
+  let from, to;
+  if (last30) {
+    from = daysAgo(30);
+    to = today();
+    $('history-from').value = from;
+    $('history-to').value = to;
+  } else {
+    from = $('history-from').value || daysAgo(30);
+    to = $('history-to').value || today();
+  }
+
+  try {
+    const r = await fetch(`/api/health/summary?start=${from}&end=${to}`);
+    const timeline = await r.json();
+    const entries = timeline.filter(d => d.symptoms).reverse();
+
+    if (!entries.length) {
+      listEl.innerHTML = '<div class="empty"><span>◎</span>No symptom logs found for this period</div>';
+      return;
+    }
+
+    listEl.innerHTML = entries.map(d => {
+      const s = d.symptoms;
+      const painVals = PAIN_AREAS.map(a => s[a.key]).filter(v => v != null);
+      const avgPain = painVals.length ? (painVals.reduce((a,b) => a+b) / painVals.length).toFixed(1) : null;
+      const oura = d.oura;
+      const runs = d.runs || [];
+
+      return `<div style="padding:16px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:15px;font-weight:500;color:var(--text-primary)">${fmtDate(d.date)}</span>
+            ${s.auto_saved ? `<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:var(--bg-input);color:var(--text-muted)">auto-saved</span>` : ''}
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            ${avgPain !== null ? `<span style="font-size:12px;padding:3px 10px;border-radius:20px;background:${avgPain <= 3 ? '#eaf3de' : avgPain <= 6 ? '#faeeda' : '#faece7'};color:${avgPain <= 3 ? '#27500a' : avgPain <= 6 ? '#633806' : '#4a1b0c'}">avg pain ${avgPain}</span>` : ''}
+            ${oura ? `<span style="font-size:12px;padding:3px 10px;border-radius:20px;background:#e6f1fb;color:#042c53">sleep ${oura.sleep_score ?? '-'}</span>` : ''}
+            ${oura?.hrv_average ? `<span style="font-size:12px;padding:3px 10px;border-radius:20px;background:#e1f5ee;color:#085041">HRV ${Math.round(oura.hrv_average)}</span>` : ''}
+            ${runs.length ? `<span style="font-size:12px;padding:3px 10px;border-radius:20px;background:#faeeda;color:#412402">ran ${runs[0].distance_km ? runs[0].distance_km.toFixed(1) + 'km' : ''}</span>` : ''}
+            <button class="btn btn-secondary" style="padding:5px 10px;font-size:12px" onclick="editEntry('${d.date}')">Edit</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:8px">
+          ${PAIN_AREAS.map(a => `
+            <div style="text-align:center">
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">${a.label}</div>
+              <div style="font-size:16px;font-weight:500;color:${s[a.key] == null ? 'var(--text-muted)' : s[a.key] <= 3 ? 'var(--green)' : s[a.key] <= 6 ? 'var(--amber)' : 'var(--red)'}">${s[a.key] ?? '-'}</div>
+            </div>`).join('')}
+        </div>
+        ${s.morning_stiffness_minutes ? `<div style="font-size:12px;color:var(--text-secondary)">Stiffness: ${s.morning_stiffness_minutes} min</div>` : ''}
+        ${s.notes ? `<div style="font-size:13px;color:var(--text-secondary);margin-top:6px;font-style:italic">"${s.notes}"</div>` : ''}
+      </div>`;
+    }).join('');
+  } catch (err) {
+    listEl.innerHTML = `<div style="color:var(--red);font-size:13px">Error loading history: ${err.message}</div>`;
+  }
+}
+
+// ── Auto-save wiring ──────────────────────────────────────
+// (runs after init() so sliders exist in the DOM)
+function wireAutoSave() {
+  document.querySelectorAll(
+    '#symptom-form input[type="range"], #symptom-form input[type="number"], #symptom-form select, #symptom-form textarea'
+  ).forEach(el => {
+    el.addEventListener('input',  saveDraft);
+    el.addEventListener('change', saveDraft);
+  });
+}
+
+// ── Service worker ────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(() => console.log('SW registered'))
+      .catch(err => console.log('SW failed:', err));
+  });
+}
+
+// ── Start ─────────────────────────────────────────────────
+init();
+wireAutoSave();
+</script>
+</body>
+</html>

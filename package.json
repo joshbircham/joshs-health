@@ -1,0 +1,48 @@
+{
+  "name": "joint-health-tracker",
+  "version": "1.0.0",
+  "description": "Personal joint health tracker with Oura integration",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "nodemon server/index.js",
+    "electron": "electron .",
+    "build-mac": "electron-builder --mac --dir",
+    "dist-mac": "electron-builder --mac"
+  },
+  "build": {
+    "appId": "com.josh.health",
+    "productName": "Josh's Health",
+    "files": [
+      "**/*",
+      "!node_modules/.cache",
+      "!*.log"
+    ],
+    "mac": {
+      "category": "public.app-category.healthcare-fitness",
+      "icon": "public/icons/icon-512.png",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "directories": {
+      "output": "dist"
+    }
+  },
+  "dependencies": {
+    "axios": "^1.7.0",
+    "better-sqlite3": "^11.0.0",
+    "canvas": "^3.2.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.0",
+    "express": "^4.19.0",
+    "multer": "^2.1.1",
+    "sax": "^1.6.0"
+  },
+  "devDependencies": {
+    "electron": "^41.0.3",
+    "electron-builder": "^26.8.1",
+    "nodemon": "^3.1.0"
+  }
+}
