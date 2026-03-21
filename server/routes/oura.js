@@ -62,14 +62,14 @@ router.post('/sync', async (req, res) => {
         resting_hr, total_sleep_minutes, deep_sleep_minutes, rem_sleep_minutes, efficiency)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(date) DO UPDATE SET
-        sleep_score      = excluded.sleep_score,
-        readiness_score  = excluded.readiness_score,
-        hrv_average      = excluded.hrv_average,
-        resting_hr       = excluded.resting_hr,
-        total_sleep_minutes = excluded.total_sleep_minutes,
-        deep_sleep_minutes  = excluded.deep_sleep_minutes,
-        rem_sleep_minutes   = excluded.rem_sleep_minutes,
-        efficiency       = excluded.efficiency
+        sleep_score      = COALESCE(excluded.sleep_score, sleep_score),
+        readiness_score  = COALESCE(excluded.readiness_score, readiness_score),
+        hrv_average      = COALESCE(excluded.hrv_average, hrv_average),
+        resting_hr       = COALESCE(excluded.resting_hr, resting_hr),
+        total_sleep_minutes = COALESCE(excluded.total_sleep_minutes, total_sleep_minutes),
+        deep_sleep_minutes  = COALESCE(excluded.deep_sleep_minutes, deep_sleep_minutes),
+        rem_sleep_minutes   = COALESCE(excluded.rem_sleep_minutes, rem_sleep_minutes),
+        efficiency       = COALESCE(excluded.efficiency, efficiency)
     `);
 
     const syncAll = db.transaction(days => {
@@ -108,13 +108,13 @@ router.post('/import', (req, res) => {
       resting_hr, total_sleep_minutes, deep_sleep_minutes, rem_sleep_minutes, efficiency)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(date) DO UPDATE SET
-      sleep_score      = excluded.sleep_score,
-      readiness_score  = excluded.readiness_score,
-      hrv_average      = excluded.hrv_average,
-      resting_hr       = excluded.resting_hr,
-      total_sleep_minutes = excluded.total_sleep_minutes,
-      deep_sleep_minutes  = excluded.deep_sleep_minutes,
-      rem_sleep_minutes   = excluded.rem_sleep_minutes,
+      sleep_score      = COALESCE(excluded.sleep_score, sleep_score),
+      readiness_score  = COALESCE(excluded.readiness_score, readiness_score),
+      hrv_average      = COALESCE(excluded.hrv_average, hrv_average),
+      resting_hr       = COALESCE(excluded.resting_hr, resting_hr),
+      total_sleep_minutes = COALESCE(excluded.total_sleep_minutes, total_sleep_minutes),
+      deep_sleep_minutes  = COALESCE(excluded.deep_sleep_minutes, deep_sleep_minutes),
+      rem_sleep_minutes   = COALESCE(excluded.rem_sleep_minutes, rem_sleep_minutes),
       efficiency       = excluded.efficiency
   `).run(
     o.date, o.sleep_score ?? null, o.readiness_score ?? null, o.hrv_average ?? null,
