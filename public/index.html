@@ -650,6 +650,17 @@
       </div>
 
       <div class="card">
+        <div class="card-title">Log a past date</div>
+        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+          <div>
+            <label>Date</label>
+            <input type="date" id="past-date-picker" style="width:180px">
+          </div>
+          <button class="btn btn-primary" onclick="logPastDate()">Log this date</button>
+        </div>
+      </div>
+
+      <div class="card">
         <div class="card-title">Entries</div>
         <div id="history-list">
           <div class="empty"><span>◎</span>Select a date range to view entries</div>
@@ -925,7 +936,11 @@ function navigate(name) {
   if (name === 'dashboard') loadDashboard();
   if (name === 'oura') loadOuraTable();
   if (name === 'medications') loadMedsConfig();
-  if (name === 'history') loadHistory(true);
+  if (name === 'history') {
+    const picker = $('past-date-picker');
+    if (picker) picker.max = today();
+    loadHistory(true);
+  }
   if (name === 'insights') loadInsights();
   if (name === 'log') loadMedsConfig();
 }
@@ -1125,19 +1140,28 @@ async function editEntry(date) {
   try {
     const r = await fetch(`/api/symptoms/${date}`);
     const data = await r.json();
-    if (!data) { toast('No entry found for that date', 'error'); return; }
-    populateForm(data);
     const formatted = new Date(date + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const shortDate = new Date(date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    $('symptom-form').reset();
+    document.querySelectorAll('#symptom-form input[type="range"]').forEach(el => updateSlider(el));
+    if (data && data.date) populateForm(data);
     const header = $('log-date-label');
     if (header) header.textContent = formatted;
     const submitBtn = document.querySelector('#symptom-form button[type="submit"]');
-    if (submitBtn) submitBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2,7 5.5,11 12,3"/></svg> Update entry for ${new Date(date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`;
+    if (submitBtn) submitBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2,7 5.5,11 12,3"/></svg> Save entry for ${shortDate}`;
     window._editingDate = date;
     navigate('log');
-    toast(`Editing entry for ${formatted}`);
+    toast(`Logging entry for ${formatted}`);
   } catch (err) {
     toast('Error loading entry: ' + err.message, 'error');
   }
+}
+
+function logPastDate() {
+  const date = $('past-date-picker').value;
+  if (!date) { toast('Pick a date first', 'error'); return; }
+  if (date >= today()) { toast('Use "Log Today" for today', 'error'); return; }
+  editEntry(date);
 }
 
 // ── Charts ────────────────────────────────────────────────
