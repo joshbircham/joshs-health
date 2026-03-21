@@ -942,7 +942,18 @@ function navigate(name) {
     loadHistory(true);
   }
   if (name === 'insights') loadInsights();
-  if (name === 'log') loadMedsConfig();
+  if (name === 'log' && !window._editingDate) {
+    // Navigating to log via nav — reset to today
+    window._editingDate = null;
+    $('symptom-form').reset();
+    document.querySelectorAll('#symptom-form input[type="range"]').forEach(el => updateSlider(el));
+    const header = $('log-date-label');
+    if (header) header.textContent = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const submitBtn = document.querySelector('#symptom-form button[type="submit"]');
+    if (submitBtn) submitBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2,7 5.5,11 12,3"/></svg> Save Today's Log`;
+    checkTodayEntry();
+  }
+  if (name === 'log') loadMedsConfig(window._editingDate || today());
 }
 
 document.querySelectorAll('.nav-item').forEach(el => {
@@ -1760,11 +1771,11 @@ if (insightsDateLabel) {
 let medsConfig = [];
 let todayMedIds = {}; // key: `${medName.toLowerCase()}_${doseNumber}` → db row id
 
-async function loadMedsConfig() {
+async function loadMedsConfig(date = today()) {
   try {
     const [configRes, todayRes] = await Promise.all([
       fetch('/api/medications/config'),
-      fetch(`/api/medications?date=${today()}`),
+      fetch(`/api/medications?date=${date}`),
     ]);
     medsConfig = await configRes.json();
     const todayMeds = await todayRes.json();
