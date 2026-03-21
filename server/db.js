@@ -83,7 +83,21 @@ db.exec(`
   );
 `);
 
-// Migrations — add columns that may not exist in older DBs
+// Migrations — add columns and constraints that may not exist in older DBs
+try {
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_medications_unique ON medications(date, medication, dose_number)');
+} catch (e) { /* index may already exist or conflict with dupes — clean those up first */ }
+
+// Remove any duplicate medication rows, keeping the latest one
+db.exec(`
+  DELETE FROM medications WHERE id NOT IN (
+    SELECT MAX(id) FROM medications GROUP BY date, medication, dose_number
+  )
+`);
+
+try {
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_medications_unique ON medications(date, medication, dose_number)');
+} catch (e) { /* ignore */ }
 const ouraColumns = db.prepare("PRAGMA table_info(oura_data)").all().map(c => c.name);
 if (!ouraColumns.includes('efficiency')) {
   db.exec('ALTER TABLE oura_data ADD COLUMN efficiency INTEGER');

@@ -2,19 +2,17 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-const MEDICATIONS = ['diclofenac', 'elvanse', 'inhaler', 'paracetamol'];
-
 // POST /api/medications — log a medication dose
 router.post('/', (req, res) => {
   const { date, medication, dose_number, taken = 1, time_taken, notes } = req.body;
   if (!date || !medication) return res.status(400).json({ error: 'date and medication required' });
-  if (!MEDICATIONS.includes(medication.toLowerCase())) {
-    return res.status(400).json({ error: `medication must be one of: ${MEDICATIONS.join(', ')}` });
-  }
 
   const result = db.prepare(`
     INSERT INTO medications (date, medication, dose_number, taken, time_taken, notes)
     VALUES (@date, @medication, @dose_number, @taken, @time_taken, @notes)
+    ON CONFLICT(date, medication, dose_number) DO UPDATE SET
+      taken = excluded.taken,
+      time_taken = excluded.time_taken
   `).run({ date, medication: medication.toLowerCase(), dose_number, taken, time_taken, notes });
 
   res.json({ ok: true, id: result.lastInsertRowid });
