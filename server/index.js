@@ -11,6 +11,10 @@ const upload = multer({ dest: path.join(__dirname, '..', 'uploads') });
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
+app.use('/api', (req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+});
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // Long timeout for XML upload route

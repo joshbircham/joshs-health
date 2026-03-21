@@ -28,17 +28,22 @@ router.post('/sync', async (req, res) => {
     const headers = { Authorization: `Bearer ${token}` };
     const params = `start_date=${start_date}&end_date=${end_date}`;
 
-    const [sleepRes, readinessRes] = await Promise.all([
+    const [sleepRes, dailySleepRes, readinessRes] = await Promise.all([
       fetch(`https://api.ouraring.com/v2/usercollection/sleep?${params}`, { headers }),
+      fetch(`https://api.ouraring.com/v2/usercollection/daily_sleep?${params}`, { headers }),
       fetch(`https://api.ouraring.com/v2/usercollection/daily_readiness?${params}`, { headers }),
     ]);
 
     const sleepData = await sleepRes.json();
+    const dailySleepData = await dailySleepRes.json();
     const readinessData = await readinessRes.json();
 
-    // Index readiness by date
+    // Index readiness and daily sleep scores by date
     const readinessByDate = {};
     (readinessData.data || []).forEach(r => { readinessByDate[r.day] = r; });
+
+    const dailySleepByDate = {};
+    (dailySleepData.data || []).forEach(s => { dailySleepByDate[s.day] = s; });
 
     // Keep only the best sleep session per night (prefer long_sleep type)
     const sleepByDate = {};
@@ -48,6 +53,9 @@ router.post('/sync', async (req, res) => {
         sleepByDate[day] = s;
       }
     });
+
+    // Merge all dates from both sleep sessions and daily sleep summaries
+    const allDays = new Set([...Object.keys(sleepByDate), ...Object.keys(dailySleepByDate)]);
 
     const upsert = db.prepare(`
       INSERT INTO oura_data (date, sleep_score, readiness_score, hrv_average,
@@ -64,25 +72,27 @@ router.post('/sync', async (req, res) => {
         efficiency       = excluded.efficiency
     `);
 
-    const syncAll = db.transaction(entries => {
-      for (const [day, s] of entries) {
+    const syncAll = db.transaction(days => {
+      for (const day of days) {
+        const s = sleepByDate[day];
+        const ds = dailySleepByDate[day];
         const readiness = readinessByDate[day];
         upsert.run(
           day,
-          s.score ?? null,
+          ds?.score ?? null,
           readiness?.score ?? null,
-          s.average_hrv ?? null,
-          s.lowest_heart_rate ?? null,
-          s.total_sleep_duration ? Math.round(s.total_sleep_duration / 60) : null,
-          s.deep_sleep_duration  ? Math.round(s.deep_sleep_duration  / 60) : null,
-          s.rem_sleep_duration   ? Math.round(s.rem_sleep_duration   / 60) : null,
-          s.efficiency ?? null
+          s?.average_hrv ?? null,
+          s?.lowest_heart_rate ?? null,
+          s?.total_sleep_duration ? Math.round(s.total_sleep_duration / 60) : null,
+          s?.deep_sleep_duration  ? Math.round(s.deep_sleep_duration  / 60) : null,
+          s?.rem_sleep_duration   ? Math.round(s.rem_sleep_duration   / 60) : null,
+          s?.efficiency ?? null
         );
       }
     });
 
-    syncAll(Object.entries(sleepByDate));
-    res.json({ ok: true, synced: Object.keys(sleepByDate).length });
+    syncAll([...allDays]);
+    res.json({ ok: true, synced: allDays.size });
   } catch (err) {
     console.error('Oura sync error:', err.message);
     res.status(500).json({ error: err.message });

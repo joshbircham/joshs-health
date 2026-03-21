@@ -1167,7 +1167,7 @@ const chartDefaults = {
 
 async function loadDashboard() {
   try {
-    const r = await fetch(`/api/health/summary?start=${daysAgo(30)}&end=${today()}`);
+    const r = await fetch(`/api/health/summary?start=${daysAgo(30)}&end=${today()}`, { cache: 'no-store' });
     const timeline = await r.json();
 
     if (!timeline.length) {
@@ -1363,7 +1363,7 @@ async function syncOura30() {
 
 async function loadOuraTable() {
   try {
-    const r = await fetch('/api/oura/data');
+    const r = await fetch('/api/oura/data', { cache: 'no-store' });
     const rows = await r.json();
     const wrap = $('oura-table-wrap');
 
@@ -1534,7 +1534,7 @@ async function loadInsights() {
   try {
     const [symptomsRes, ouraRes, medsRes] = await Promise.all([
       fetch(`/api/symptoms/${today()}`),
-      fetch(`/api/oura/data`),
+      fetch(`/api/oura/data`, { cache: 'no-store' }),
       fetch(`/api/medications?date=${today()}`),
     ]);
     const symptom = await symptomsRes.json();
@@ -1972,6 +1972,9 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js')
       .then(() => console.log('SW registered'))
       .catch(err => console.log('SW failed:', err));
+  });
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (e.data?.type === 'sw-updated') window.location.reload();
   });
 }
 
